@@ -1,0 +1,80 @@
+public void mostrarGeoIP() throws InterruptedException {
+
+        String url = "https://api.ip2location.io/";
+
+        boolean showGeopositionDailog = BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE, (scope, continuacion) -> GlobalSettingsManager.INSTANCE.showGeopositionInfo(NavigationActivity.this, continuacion));
+        if (showGeopositionDailog) {
+            StringRequest postRequest = new StringRequest(Request.Method.GET, url, new com.android.volley.Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    try {
+                        JSONObject jsonObject = new JSONObject(response);
+                        AlertDialog.Builder builder = new AlertDialog.Builder(NavigationActivity.this);
+                        builder.setIcon(R.drawable.ipg1);
+                        if (jsonObject.getString("country_name").equals(getString(R.string.paisip))) {
+                            builder.setTitle("Su posición actual es España");
+                        } else {
+                            builder.setTitle("Su posición actual es " + jsonObject.getString("country_name"));
+                        }
+                        builder.setMessage("Si    desea    mantener    la    ubicación, acepte, sino,   configure    la   deseada.").setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Toast.makeText(NavigationActivity.this, "Ubicación guardada", Toast.LENGTH_LONG).show();
+                            }
+                        }).setNegativeButton("Configurar", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Toast.makeText(NavigationActivity.this, "Accediendo a la nueva configuración", Toast.LENGTH_LONG).show();
+                                AlertDialog.Builder builder1 = new AlertDialog.Builder(NavigationActivity.this);
+                                builder1.setIcon(R.drawable.bg_spinner_select_country);
+                                builder1.setTitle("Seleccione Zona Geográfica");
+                                LayoutInflater inflater = LayoutInflater.from(NavigationActivity.this);
+                                View viewContent = inflater.inflate(R.layout.configurar_ubicacion_layaout, null);
+                                builder1.setView(viewContent);
+                                SwitchCompat espana = viewContent.findViewById(R.id.config_country_spain);
+                                SwitchCompat ecuador = viewContent.findViewById(R.id.conf_country_ecuador);
+
+                                espana.setChecked(true);
+
+                                espana.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                                    navigationViewModel.setSelectedCountry(isChecked ? Constants.Country.SPAIN : Constants.Country.ECUADOR);
+                                    ecuador.setChecked(!isChecked);
+                                });
+                                ecuador.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                                    navigationViewModel.setSelectedCountry(isChecked ? Constants.Country.ECUADOR : Constants.Country.SPAIN);
+                                    espana.setChecked(!isChecked);
+                                });
+                                builder1.setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                        navigationViewModel.setSelectedCountry(espana.isChecked() ? Constants.Country.SPAIN : Constants.Country.ECUADOR);
+                                        Toast.makeText(NavigationActivity.this, "Nueva configuración guardada", Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                                builder1.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                        Toast.makeText(NavigationActivity.this, "Se mantuvo su ubicación por default", Toast.LENGTH_LONG).show();
+                                    }
+                                }).show();
+
+                            }
+                        }).show();
+
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }, new com.android.volley.Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                }
+            });
+            Volley.newRequestQueue(NavigationActivity.this).add(postRequest);
+        }
+        BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE, (scope, continuacion) -> GlobalSettingsManager.INSTANCE.setShowGeoPositionInfo(NavigationActivity.this, false, continuacion));
+    }
